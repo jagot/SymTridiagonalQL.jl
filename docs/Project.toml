@@ -1,0 +1,3 @@
+[deps]
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+SymTridiagonalQL = "586bac0e-eb36-4025-8585-5e3edddcdac6"
