@@ -33,11 +33,11 @@ function wilkinson_shift3(Dᵢ, Dᵢ₊₁, Dᵢ₊₂, Eᵢ, Eᵢ₊₁; verbos
     iszero(Eᵢ₊₁) && return wilkinson_shift2(Dᵢ, Dᵢ₊₁, Eᵢ; verbosity=verbosity)
     a = (Dᵢ + Dᵢ₊₁ + Dᵢ₊₂)
 
-    Y = −a^2 +
+    Y = -a^2 +
         3*(Dᵢ₊₁*Dᵢ₊₂ + Dᵢ*(Dᵢ₊₁ + Dᵢ₊₂) - Eᵢ^2 - Eᵢ₊₁^2)
 
     b = (2Dᵢ - Dᵢ₊₁ - Dᵢ₊₂)
-    Z = −(Dᵢ + Dᵢ₊₁ - 2Dᵢ₊₂)*(a*(Dᵢ - 2Dᵢ₊₁ + Dᵢ₊₂) + 9Eᵢ^2) +
+    Z = -(Dᵢ + Dᵢ₊₁ - 2Dᵢ₊₂)*(a*(Dᵢ - 2Dᵢ₊₁ + Dᵢ₊₂) + 9Eᵢ^2) +
         9a*Eᵢ₊₁^2
 
     a3 = a/3
