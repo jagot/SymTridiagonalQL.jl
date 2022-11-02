@@ -22,4 +22,5 @@ makedocs(;
 deploydocs(;
     repo="github.com/jagot/SymTridiagonalQL.jl",
     devbranch="main",
+    push_preview = true,
 )
