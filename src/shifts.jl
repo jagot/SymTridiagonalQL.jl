@@ -1,14 +1,47 @@
-function wilkinson_shift2(Dᵢ, Dᵢ₊₁, Eᵢ; verbosity=0)
-    iszero(Eᵢ) && return zero(Dᵢ)
+#=
+
+Equations below refer to
+
+- Noble, J., Lubasch, M., Stevens, J., & Jentschura,
+  U. (2017). Diagonalization of complex symmetric matrices:
+  generalized Householder reflections, iterative deflation and
+  implicit shifts. Computer Physics Communications, 221(nil),
+  304–316. http://dx.doi.org/10.1016/j.cpc.2017.06.014
+
+=#
+
+function eigvals_2x2(Dᵢ, Dᵢ₊₁, Eᵢ)
+    iszero(Eᵢ) && return Dᵢ, Dᵢ₊₁
+
+    # Eq. (14)
 
     p = (Dᵢ₊₁ - Dᵢ)/2Eᵢ
     q = √(p^2 + 1)
 
     a = p+q
     b = p-q
-    c = abs(a) < abs(b) ? a : b
 
-    σ = Dᵢ + Eᵢ*c
+    Λ₊ = Dᵢ + Eᵢ*a
+    Λ₋ = Dᵢ + Eᵢ*b
+
+    Λ₊, Λ₋
+end
+
+function wilkinson_shift2(Dᵢ, Dᵢ₊₁, Eᵢ; verbosity=0)
+    iszero(Eᵢ) && return zero(Dᵢ)
+
+    # We could early-out on computing only the necessary eigenvalue
+    # using
+    #
+    # c = abs(a) < abs(b) ? a : b
+    #
+    # but we opt for clarity. This is hardly a bottleneck, but could
+    # be optimized down the road by passing some kind of extra
+    # argument to eigvals_2x2.
+
+    σ₊,σ₋ = eigvals_2x2(Dᵢ, Dᵢ₊₁, Eᵢ)
+
+    σ = abs(σ₊-Dᵢ) < abs(σ₋-Dᵢ) ? σ₊ : σ₋
 
     if verbosity > 0
         σ₊ = Dᵢ + Eᵢ*a
@@ -30,6 +63,19 @@ wilkinson_shift2(T::SymTridiagonal, i; kwargs...) =
     wilkinson_shift2(T.dv, T.ev, i; kwargs...)
 
 function eigvals_3x3(Dᵢ, Dᵢ₊₁, Dᵢ₊₂, Eᵢ, Eᵢ₊₁; verbosity=0)
+    if iszero(Eᵢ)
+        return (Dᵢ, eigvals_2x2(Dᵢ₊₁, Dᵢ₊₂, Eᵢ₊₁)...)
+    elseif iszero(Eᵢ₊₁)
+        return (Dᵢ₊₂, eigvals_2x2(Dᵢ, Dᵢ₊₁, Eᵢ)...)
+    end
+
+    # Eq. (16); there appears to be a typo in Eqs. (16b) & (16c),
+    # where 2^(1/3) should be replaced by 2^(2/3) in the second term
+    # of each of the quoted equations. This was figured out using by
+    # asking WolframAlpha for "eigenvalues of
+    # {{a,b,0},{b,d,e},{0,e,f}}":
+    # https://www.wolframalpha.com/input?i=eigenvalues+of+%7B%7Ba%2Cb%2C0%7D%2C%7Bb%2Cd%2Ce%7D%2C%7B0%2Ce%2Cf%7D%7D
+
     a = (Dᵢ + Dᵢ₊₁ + Dᵢ₊₂)
     a3 = a/3
 
@@ -83,6 +129,7 @@ function wilkinson_shift3(D::AbstractVector{T}, E::AbstractVector, i; kwargs...)
     n == 0 && return zero(T)
     n == 1 && return D[1]
     n == 2 && return wilkinson_shift2(D, E, i; kwargs...)
+
     wilkinson_shift3(D[i], D[i+1], D[i+2],
                      E[i], E[i+1]; kwargs...)
 end
