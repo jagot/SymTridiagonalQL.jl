@@ -11,7 +11,7 @@ factorization, as outlined in
 - Noble, J., Lubasch, M., Stevens, J., & Jentschura,
   U. (2017). Diagonalization of complex symmetric matrices:
   generalized Householder reflections, iterative deflation and
-  implicit shifts. Computer Physics Communications, 221(nil),
+  implicit shifts. Computer Physics Communications, 221,
   304–316. DOI:
   [10.1016/j.cpc.2017.06.014](http://dx.doi.org/10.1016/j.cpc.2017.06.014),
   [preprint](https://ora.ox.ac.uk/objects/uuid:af82d04a-b72c-47cf-9ed3-f9c56fb4a019)

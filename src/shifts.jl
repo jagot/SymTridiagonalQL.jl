@@ -27,34 +27,53 @@ function wilkinson_shift2(D::AbstractVector{T}, E::AbstractVector, i; kwargs...)
 end
 
 wilkinson_shift2(T::SymTridiagonal, i; kwargs...) =
-    wilkinson_shift2(T.dv, T.ev; kwargs...)
+    wilkinson_shift2(T.dv, T.ev, i; kwargs...)
 
-function wilkinson_shift3(Dᵢ, Dᵢ₊₁, Dᵢ₊₂, Eᵢ, Eᵢ₊₁; verbosity=0)
-    iszero(Eᵢ₊₁) && return wilkinson_shift2(Dᵢ, Dᵢ₊₁, Eᵢ; verbosity=verbosity)
+function eigvals_3x3(Dᵢ, Dᵢ₊₁, Dᵢ₊₂, Eᵢ, Eᵢ₊₁; verbosity=0)
     a = (Dᵢ + Dᵢ₊₁ + Dᵢ₊₂)
+    a3 = a/3
 
     Y = -a^2 +
         3*(Dᵢ₊₁*Dᵢ₊₂ + Dᵢ*(Dᵢ₊₁ + Dᵢ₊₂) - Eᵢ^2 - Eᵢ₊₁^2)
 
     b = (2Dᵢ - Dᵢ₊₁ - Dᵢ₊₂)
-    Z = -(Dᵢ + Dᵢ₊₁ - 2Dᵢ₊₂)*(a*(Dᵢ - 2Dᵢ₊₁ + Dᵢ₊₂) + 9Eᵢ^2) +
-        9a*Eᵢ₊₁^2
+    Z = -(Dᵢ + Dᵢ₊₁ - 2Dᵢ₊₂)*(b*(Dᵢ - 2Dᵢ₊₁ + Dᵢ₊₂) + 9Eᵢ^2) +
+        9b*Eᵢ₊₁^2
 
-    a3 = a/3
-    c = complex(Z + √(Z^2 + 4Y^3))^(1/3)
+    c = (Z + √(complex(Z^2 + 4Y^3)))^(1/3)
     d = 1 + im*√3
     e = ∛2
 
-    Λ₁ = a3 + e*Y/3c - c/3e
-    Λ₂ = a3 - d*Y/(3e*c) + conj(d)*c/6e
-    Λ₃ = a3 - conj(d)*Y/(3e*c) + d*c/6e
+    A₁ = e*Y/3c
+    B₁ = -c/3e
+
+    A₂ = -d*Y/(3e^2*c)
+    B₂ = conj(d)*c/6e
+
+    A₃ = -conj(d)*Y/(3e^2*c)
+    B₃ = d*c/6e
+
+    Λ₁ = a3 + A₁ + B₁
+    Λ₂ = a3 + A₂ + B₂
+    Λ₃ = a3 + A₃ + B₃
+
+    verbosity > 0 &&
+        @info "3×3 eigenvalues" Dᵢ Dᵢ₊₁ Dᵢ₊₂ Eᵢ Eᵢ₊₁ a a3 b Y Z c d e A₁ B₁ A₂ B₂ A₃ B₃ Λ₁ Λ₂ Λ₃
+
+    Λ₁,Λ₂,Λ₃
+end
+
+function wilkinson_shift3(Dᵢ, Dᵢ₊₁, Dᵢ₊₂, Eᵢ, Eᵢ₊₁; verbosity=0)
+    iszero(Eᵢ₊₁) && return wilkinson_shift2(Dᵢ, Dᵢ₊₁, Eᵢ; verbosity=verbosity)
+
+    Λ₁,Λ₂,Λ₃ = eigvals_3x3(Dᵢ, Dᵢ₊₁, Dᵢ₊₂, Eᵢ, Eᵢ₊₁; verbosity=verbosity)
 
     σ = Λ₁
     abs(Dᵢ - σ) > abs(Dᵢ - Λ₂) && (σ = Λ₂)
     abs(Dᵢ - σ) > abs(Dᵢ - Λ₃) && (σ = Λ₃)
 
     verbosity > 0 &&
-        @info "Wilkinson 3×3 shift" Dᵢ Dᵢ₊₁ Dᵢ₊₂ Eᵢ Eᵢ₊₁ Y Z Λ₁ Λ₂ Λ₃ σ
+        @info "Wilkinson 3×3 shift" Λ₁ Λ₂ Λ₃ σ
 
     σ
 end
@@ -69,5 +88,4 @@ function wilkinson_shift3(D::AbstractVector{T}, E::AbstractVector, i; kwargs...)
 end
 
 wilkinson_shift3(T::SymTridiagonal, i; kwargs...) =
-    wilkinson_shift3(T.dv[i], T.dv[i+1], T.dv[i+2],
-                     T.ev[i], T.ev[i+2]; kwargs...)
+    wilkinson_shift3(T.dv, T.ev, i; kwargs...)
