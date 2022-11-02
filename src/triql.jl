@@ -1,3 +1,14 @@
+macro check_E(E,i,ϵ,verbosity)
+    quote
+        let i = $(esc(i))
+            if i > 1 && abs($(esc(E))[i]) < $(esc(ϵ))
+                $(esc(verbosity)) > 0 && @info "Premature zero at E[$i]"
+                return i
+            end
+        end
+    end
+end
+
 function chase_the_bulge!(D, E, c, s; verbosity=0)
     n = length(D)
     n == 1 && return
@@ -33,12 +44,6 @@ function chase_the_bulge!(D, E, c, s; verbosity=0)
     s′ = zero(s)
 
     ϵ = eps(real(eltype(E)))
-    function check_E(i)
-        if i > 1 && abs(E[i]) < ϵ
-            @info "Premature zero at E[$(i)]"
-            return i
-        end
-    end
 
     for i = n-1:-1:1
         if i < n-1
@@ -57,13 +62,13 @@ function chase_the_bulge!(D, E, c, s; verbosity=0)
         Dᵢ′ = D[i] = c²*Dᵢ - a + s²*Dᵢ₊₁
         if i < n-1
             Eᵢ₊₁′ = E[i+1] = √(Eᵢ₊₁^2+F^2)
-            # check_E(i+1)
+            # @check_E E i+1 ϵ verbosity
         end
         Eᵢ′ = E[i] = (c² - s²)*Eᵢ + cs*(Dᵢ - Dᵢ₊₁)
-        check_E(i)
+        @check_E E i ϵ verbosity
         if i > 1
             Eᵢ₋₁′ = E[i-1] = c*Eᵢ₋₁
-            check_E(i-1)
+            @check_E E i-1 ϵ verbosity
             F′ = s*Eᵢ₋₁
         end
 
@@ -151,8 +156,7 @@ function triql!(D, E; max_iter=150, tol=100eps(real(eltype(E))), verbosity=0, sh
 end
 
 function triql!(T::SymTridiagonal; verbosity=0, kwargs...)
-    n = size(T,1)
-    stack = [1:n]
+    stack = [1:size(T,1)]
     while !isempty(stack)
         r = pop!(stack)
         n = r[end]
@@ -162,8 +166,8 @@ function triql!(T::SymTridiagonal; verbosity=0, kwargs...)
             i = triql!(view(T.dv, j:n), view(T.ev, j:n-1);
                        verbosity=verbosity, kwargs...)
             if i ≠ 1
-                ar = r[1]:r[i-1]
-                br = r[i]:n
+                ar = r[1]:r[i]
+                br = r[i+1]:n
                 push!(stack, ar)
                 push!(stack, br)
 
@@ -171,6 +175,8 @@ function triql!(T::SymTridiagonal; verbosity=0, kwargs...)
                     @info "Premature zero at j = $(r[i]), deflating into $(ar) and $(br)"
                 break
             end
+            # @warn "Breaking"
+            # break
         end
     end
     T
