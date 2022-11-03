@@ -27,7 +27,7 @@ function eigvals_2x2(Dᵢ, Dᵢ₊₁, Eᵢ)
     Λ₊, Λ₋
 end
 
-function wilkinson_shift2(Dᵢ, Dᵢ₊₁, Eᵢ; verbosity=0)
+function wilkinson_shift(Dᵢ, Dᵢ₊₁, Eᵢ; verbosity=0)
     iszero(Eᵢ) && return zero(Dᵢ)
 
     # We could early-out on computing only the necessary eigenvalue
@@ -43,24 +43,21 @@ function wilkinson_shift2(Dᵢ, Dᵢ₊₁, Eᵢ; verbosity=0)
 
     σ = abs(σ₊-Dᵢ) < abs(σ₋-Dᵢ) ? σ₊ : σ₋
 
-    if verbosity > 0
-        σ₊ = Dᵢ + Eᵢ*a
-        σ₋ = Dᵢ + Eᵢ*b
+    verbosity > 0 &&
         @info "Wilkinson 2×2 shift" Dᵢ Dᵢ₊₁ Eᵢ σ₊ σ₋ σ
-    end
 
     σ
 end
 
-function wilkinson_shift2(D::AbstractVector{T}, E::AbstractVector, i; kwargs...) where T
+function wilkinson_shift(D::AbstractVector{T}, E::AbstractVector, i; kwargs...) where T
     n = length(D)
     n == 0 && return zero(T)
     n == 1 && return D[1]
-    wilkinson_shift2(D[i], D[i+1], E[i]; kwargs...)
+    wilkinson_shift(D[i], D[i+1], E[i]; kwargs...)
 end
 
-wilkinson_shift2(T::SymTridiagonal, i; kwargs...) =
-    wilkinson_shift2(T.dv, T.ev, i; kwargs...)
+wilkinson_shift(T::SymTridiagonal, i; kwargs...) =
+    wilkinson_shift(T.dv, T.ev, i; kwargs...)
 
 function eigvals_3x3(Dᵢ, Dᵢ₊₁, Dᵢ₊₂, Eᵢ, Eᵢ₊₁; verbosity=0)
     if iszero(Eᵢ)
@@ -109,8 +106,8 @@ function eigvals_3x3(Dᵢ, Dᵢ₊₁, Dᵢ₊₂, Eᵢ, Eᵢ₊₁; verbosity=0
     Λ₁,Λ₂,Λ₃
 end
 
-function wilkinson_shift3(Dᵢ, Dᵢ₊₁, Dᵢ₊₂, Eᵢ, Eᵢ₊₁; verbosity=0)
-    iszero(Eᵢ₊₁) && return wilkinson_shift2(Dᵢ, Dᵢ₊₁, Eᵢ; verbosity=verbosity)
+function cubic_shift(Dᵢ, Dᵢ₊₁, Dᵢ₊₂, Eᵢ, Eᵢ₊₁; verbosity=0)
+    iszero(Eᵢ₊₁) && return wilkinson_shift(Dᵢ, Dᵢ₊₁, Eᵢ; verbosity=verbosity)
 
     Λ₁,Λ₂,Λ₃ = eigvals_3x3(Dᵢ, Dᵢ₊₁, Dᵢ₊₂, Eᵢ, Eᵢ₊₁; verbosity=verbosity)
 
@@ -124,15 +121,26 @@ function wilkinson_shift3(Dᵢ, Dᵢ₊₁, Dᵢ₊₂, Eᵢ, Eᵢ₊₁; verbos
     σ
 end
 
-function wilkinson_shift3(D::AbstractVector{T}, E::AbstractVector, i; kwargs...) where T
-    n = length(D)
-    n == 0 && return zero(T)
-    n == 1 && return D[1]
-    n == 2 && return wilkinson_shift2(D, E, i; kwargs...)
+function cubic_shift(D::AbstractVector{T}, E::AbstractVector, i; kwargs...) where T
+    length(D) < 3 && return wilkinson_shift(D, E, i; kwargs...)
 
-    wilkinson_shift3(D[i], D[i+1], D[i+2],
-                     E[i], E[i+1]; kwargs...)
+    cubic_shift(D[i], D[i+1], D[i+2],
+                E[i], E[i+1]; kwargs...)
 end
 
-wilkinson_shift3(T::SymTridiagonal, i; kwargs...) =
-    wilkinson_shift3(T.dv, T.ev, i; kwargs...)
+cubic_shift(T::SymTridiagonal, i; kwargs...) =
+    cubic_shift(T.dv, T.ev, i; kwargs...)
+
+function get_shift(D, E, shift_mode; kwargs...)
+    if shift_mode == 0
+        zero(eltype(D))
+    elseif shift_mode == 1
+        D[1]
+    elseif shift_mode == 2
+        wilkinson_shift(D, E, 1; kwargs...)
+    elseif shift_mode == 3
+        cubic_shift(D, E, 1; kwargs...)
+    else
+        throw(ArgumentError("Invalid shift_mode, choose 0–3"))
+    end
+end

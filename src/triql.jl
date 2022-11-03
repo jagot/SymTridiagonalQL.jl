@@ -121,17 +121,7 @@ function triql!(D, E; max_iter=150, tol=100eps(real(eltype(E))), verbosity=0, sh
 
 
     for n = 1:max_iter
-        σ = if shift_mode == 0
-            zero(eltype(D))
-        elseif shift_mode == 1
-            D[1]
-        elseif shift_mode == 2
-            wilkinson_shift2(D, E, 1; verbosity=verbosity-2)
-        elseif shift_mode == 3
-            wilkinson_shift3(D, E, 1; verbosity=verbosity-2)
-        else
-            throw(ArgumentError("Invalid shift_mode, choose 0–3"))
-        end
+        σ = get_shift(D, E, shift_mode; verbosity=verbosity-2)
 
         Dₙ = D[end]
         Eₙ₋₁ = E[end]
