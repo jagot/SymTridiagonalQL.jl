@@ -44,6 +44,13 @@ function chase_the_bulge!(D, E, c, s; verbosity=0)
     s′ = zero(s)
 
     ϵ = eps(real(eltype(E)))
+    # We estimate the norm as ||A||₂ ≤ 3 maxᵢ,ⱼ |aᵢⱼ| since ||A||₂ ≤
+    # √(||A||₁||A||_∞) by Schur's test, see
+    # https://math.stackexchange.com/a/3743734/45104
+    N = 3max(maximum(abs, D),maximum(abs, E))
+    tol = √ϵ*N
+
+    verbosity > 0 && @show ϵ N tol norm(SymTridiagonal(D, E))
 
     for i = n-1:-1:1
         if i < n-1
@@ -114,9 +121,9 @@ function triql!(D, E; max_iter=150, tol=100eps(real(eltype(E))), verbosity=0, sh
 
     fmt = if verbosity > 0
         nd = length(digits(max_iter))
-        printfmtln("{1:>$(nd)s} {2:$(nd)s} | {3:10s}",
-                   "n", "", "|Eⱼ|")
-        FormatExpr("{1:>$(nd)d}/{2:$(nd)d} | {3:+0.3e}")
+        printfmtln("{1:>$(nd)s} {2:$(nd)s} | {3:10s} {4:10s}",
+                   "n", "", "|Dⱼ|", "|Eⱼ|")
+        FormatExpr("{1:>$(nd)d}/{2:$(nd)d} | {3:+0.3e} {4:+0.3e}")
     end
 
 
@@ -134,7 +141,7 @@ function triql!(D, E; max_iter=150, tol=100eps(real(eltype(E))), verbosity=0, sh
         i = chase_the_bulge!(D, E, c, s, verbosity=verbosity-2)
         if verbosity > 0
             verbosity > 1 && display(SymTridiagonal(D, E))
-            printfmtln(fmt, n, max_iter, abs(E[1]))
+            printfmtln(fmt, n, max_iter, abs(D[1]), abs(E[1]))
         end
 
         i ≠ 1 && return i
