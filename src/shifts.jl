@@ -116,7 +116,7 @@ function cubic_shift(Dᵢ, Dᵢ₊₁, Dᵢ₊₂, Eᵢ, Eᵢ₊₁; verbosity=0
     abs(Dᵢ - σ) > abs(Dᵢ - Λ₃) && (σ = Λ₃)
 
     verbosity > 0 &&
-        @info "Wilkinson 3×3 shift" Λ₁ Λ₂ Λ₃ σ
+        @info "Cubic 3×3 shift" Λ₁ Λ₂ Λ₃ σ
 
     σ
 end
