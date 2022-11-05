@@ -66,4 +66,6 @@ end
             @test λ ≈ λref
         end
     end
+
+    include("rotations.jl")
 end

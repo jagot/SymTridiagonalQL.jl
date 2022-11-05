@@ -11,6 +11,7 @@ function horizontal_line(io::IO=stdout; char="━", color=:light_black)
 end
 
 include("shifts.jl")
+include("rotations.jl")
 include("triql.jl")
 
 end
