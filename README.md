@@ -8,16 +8,11 @@
 Diagonalization of (complex) symmetric tridiagonal matrices via QL
 factorization, as outlined in
 
-- Noble, J., Lubasch, M., Stevens, J., & Jentschura,
-  U. (2017). Diagonalization of complex symmetric matrices:
-  generalized Householder reflections, iterative deflation and
-  implicit shifts. Computer Physics Communications, 221,
-  304–316. DOI:
-  [10.1016/j.cpc.2017.06.014](http://dx.doi.org/10.1016/j.cpc.2017.06.014),
-  [preprint](https://ora.ox.ac.uk/objects/uuid:af82d04a-b72c-47cf-9ed3-f9c56fb4a019)
-
-- Noble, J. H., Lubasch, M., & Jentschura, U. D. (2013). Generalized
-  householder transformations for the complex symmetric eigenvalue
-  problem. The European Physical Journal Plus, 128(8), 93. DOI:
-  [10.1140/epjp/i2013-13093-1](http://dx.doi.org/10.1140/epjp/i2013-13093-1),
-  [preprint](https://arxiv.org/abs/1301.5758)
+- Cullum, J. K., & Willoughby, R. A. (1996). A $QL$ procedure for
+  computing the eigenvalues of complex symmetric tridiagonal
+  matrices. SIAM Journal on Matrix Analysis and Applications, 17(1),
+  83–109. http://dx.doi.org/10.1137/s0895479894137639
+  
+- Bowdler, H., Martin, R., Reinsch, C., & Wilkinson,
+  J. (1968). Handbook series linear algebra. the QR and QL algorithms
+  for symmetrie matrices. Numerische Mathematik, 11, 293–306.
