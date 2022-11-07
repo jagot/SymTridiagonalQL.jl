@@ -1,3 +1,5 @@
+import LinearAlgebra: sorteig!
+
 #=
 
 References:
@@ -5,6 +7,11 @@ References:
 - Parlett, B. N. (1998). The Symmetric Eigenvalue Problem. : Society
   for Industrial and Applied
   Mathematics. https://doi.org/10.1137/1.9781611971163
+
+- Cullum, J. K., & Willoughby, R. A. (1996). A $QL$ procedure for
+  computing the eigenvalues of complex symmetric tridiagonal
+  matrices. SIAM Journal on Matrix Analysis and Applications, 17(1),
+  83–109. http://dx.doi.org/10.1137/s0895479894137639
 
 - Noble, J., Lubasch, M., Stevens, J., & Jentschura,
   U. (2017). Diagonalization of complex symmetric matrices:
@@ -216,7 +223,7 @@ Specifically, this covers steps 3–4, since the other steps are taken
 care of by the driver routine [`triql!`](@ref).
 
 """
-function cullum1996_sweep!(k, D, E, shift_mode, verbosity; max_sweep_tries=10)
+function cullum1996_sweep!(k, D, E, shift_mode, verbosity; Qright=nothing, max_sweep_tries=10)
     U = promote_type(eltype(D), eltype(E))
 
     M = length(D)
@@ -298,6 +305,27 @@ function cullum1996_sweep!(k, D, E, shift_mode, verbosity; max_sweep_tries=10)
             verbosity > 1 && @show D[i], D[i+1]
             G = B - c*rr
             verbosity > 1 && @show G
+
+            if !isnothing(Qright)
+                if verbosity > 1
+                    @info "Forming eigenvectors" i c s
+                    @show Qright[:,i]
+                    @show Qright[:,i+1]
+                end
+
+                qi = view(Qright, :, i)
+                qip1 = view(Qright, :, i+1)
+                for k = eachindex(qi)
+                    u = qi[k]
+                    v = qip1[k]
+                    qi[k] = -c*u + s*v
+                    qip1[k] = s*u + c*v
+                    if verbosity > 1
+                        @show k
+                        display(parent(Qright))
+                    end
+                end
+            end
         end
         D[1] -= ϕ
         E[1] = G
@@ -307,7 +335,7 @@ function cullum1996_sweep!(k, D, E, shift_mode, verbosity; max_sweep_tries=10)
     @warn "Successful sweep not accomplished in $(max_sweep_tries) tries"
 end
 
-function triql!(D, E; max_iter=150, ϵ=eps(real(eltype(E))), verbosity=0, shift_mode=2, kwargs...)
+function triql!(D, E; Qright=nothing, max_iter=150, ϵ=eps(real(eltype(E))), verbosity=0, shift_mode=2, kwargs...)
     N = length(D)
     @assert length(E) == N
     N < 2 && return
@@ -338,10 +366,12 @@ function triql!(D, E; max_iter=150, ϵ=eps(real(eltype(E))), verbosity=0, shift_
                 @info "Diagonalizing submatrix $(l)–$(m)"
             end
 
-            Ds = view(D, l:m)
-            Es = view(E, l:m)
+            sel = l:m
+            Ds = view(D, sel)
+            Es = view(E, sel)
+            Qrights = isnothing(Qright) ? nothing : view(Qright, :, sel)
 
-            cullum1996_sweep!(n, Ds, Es, shift_mode, verbosity-2; kwargs...)
+            cullum1996_sweep!(n, Ds, Es, shift_mode, verbosity-2; Qright=Qrights, kwargs...)
 
             if verbosity > 0
                 verbosity > 1 && display(SymTridiagonal(D, E))
@@ -358,8 +388,6 @@ function triql!(D, E; max_iter=150, ϵ=eps(real(eltype(E))), verbosity=0, shift_
         end
 
         converged || @warn "Convergence not reached in $(max_iter) iterations" tol
-        # @warn "Breaking"
-        # break
     end
 end
 
@@ -380,4 +408,11 @@ end
 
 triql(T; kwargs...) = triql!(copy(T); kwargs...)
 
-export triql!, triql
+function triql_vectors(T; kwargs...)
+    U = eltype(T)
+    Qright = Matrix(one(U)*I, size(T))
+    T = triql!(copy(T); Qright=Qright, kwargs...)
+    Eigen(sorteig!(diag(T), Qright)...)
+end
+
+export triql!, triql, triql_vectors

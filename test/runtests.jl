@@ -5,11 +5,13 @@ using LinearAlgebra
 using Random
 import SymTridiagonalQL: eigvals_2x2, eigvals_3x3
 
+eigperm(λ) = sortperm(λ, by=z->(abs(z),angle(z)))
+
 function compare_eigvals(λ, λref)
     # This is not a fool-proof way of sorting the eigenvalues for
     # comparison, but good enough for our test cases.
-    p1 = sortperm(λref, by=z->(abs(z),angle(z)))
-    p2 = sortperm(λ, by=z->(abs(z),angle(z)))
+    p1 = eigperm(λref)
+    p2 = eigperm(λ)
 
     @test λref[p1] ≈ λ[p2]
 end
@@ -31,10 +33,58 @@ function compare_eigvals(H::SymTridiagonal)
     end
 end
 
+function test_eigenvectors(H, ee)
+    # Test if the purported eigenvectors of H indeed are such
+    for (i,λ) in enumerate(ee.values)
+        ϕ = view(ee.vectors, :, i)
+        H*ϕ ≈ λ*ϕ || @error "Eigenpair #$(i) with λ = $(λ) is, in fact, not an eigenpair"
+        @test H*ϕ ≈ λ*ϕ
+    end
+end
+
+function compare_eigen(ee, eeref)
+    λref = eeref.values
+    λ = ee.values
+
+    p1 = eigperm(λref)
+    p2 = eigperm(λ)
+
+    @test λref[p1] ≈ λ[p2]
+
+    for (i,j) in zip(p1,p2)
+        ϕref = view(eeref.vectors, :, i)
+        ϕ = view(ee.vectors, :, j)
+
+        abs(dot(ϕref,ϕ)) ≈ 1 ||
+            @error "Eigenvector with λ = $(λ[j]) does not agree with reference eigenvector with λ = $(λref[i])"
+
+        @test abs(dot(ϕref,ϕ)) ≈ 1
+    end
+
+    # Also test orthonormality by rotating each column of the overlap
+    # matrix, such that the diagonal elements are purely real,
+    # positive.
+    S = complex(eeref.vectors[:,p1]'ee.vectors[:,p2])
+    for j = 1:size(S,1)
+        s = S[j,j]
+        lmul!(exp(-im*angle(s)), view(S, :, j))
+    end
+    @test S ≈ I
+end
+
+function compare_eigen(H::SymTridiagonal)
+    ee = triql_vectors(H)
+    test_eigenvectors(H, ee)
+
+    eeref = isreal(H) ? eigen(real(H)) : eigen(Matrix(H))
+
+    compare_eigen(ee, eeref)
+end
+
 @testset "SymTridiagonalQL.jl" begin
     Random.seed!(1234)
 
-    @testset "$(n)×$(n) matrix eigenvalues" for n = [1,2,3,4,10,100]
+    @testset "$(n)×$(n) matrix eigenvalues/eigenpairs" for n = [1,2,3,4,10,100]
         for (D,E) = [(-2ones(n), ones(n-1)),
                      (-2ones(2n), vcat(ones(n-1),0,ones(n-1))),
                      (complex(-2ones(n)), complex(ones(n-1))),
@@ -54,6 +104,8 @@ end
             H = SymTridiagonal(D, E)
 
             compare_eigvals(H)
+
+            compare_eigen(H)
         end
     end
 
