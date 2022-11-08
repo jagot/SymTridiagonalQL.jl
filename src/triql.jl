@@ -1,3 +1,5 @@
+import LinearAlgebra: sorteig!
+
 #=
 
 References:
@@ -6,11 +8,10 @@ References:
   for Industrial and Applied
   Mathematics. https://doi.org/10.1137/1.9781611971163
 
-- Noble, J., Lubasch, M., Stevens, J., & Jentschura,
-  U. (2017). Diagonalization of complex symmetric matrices:
-  generalized Householder reflections, iterative deflation and
-  implicit shifts. Computer Physics Communications, 221(nil),
-  304–316. http://dx.doi.org/10.1016/j.cpc.2017.06.014
+- Cullum, J. K., & Willoughby, R. A. (1996). A $QL$ procedure for
+  computing the eigenvalues of complex symmetric tridiagonal
+  matrices. SIAM Journal on Matrix Analysis and Applications, 17(1),
+  83–109. http://dx.doi.org/10.1137/s0895479894137639
 
 =#
 
@@ -80,122 +81,6 @@ macro check_E(D,E,i,tol,ϵ,verbosity)
     end
 end
 
-function noble2017_sweep!(D, E, c, s; verbosity=0)
-    n = length(D)
-    n == 1 && return
-
-    fmt = nothing
-    fmt′ = nothing
-    if verbosity > 0
-        nd = length(digits(n))
-        @info "Chasing the bulge" n c s c^2 + s^2
-        printfmtln("{1:>$(nd)s}  | {2:22s} {3:22s} | {4:22s} {5:22s} {6:22s} {7:22s} {8:22s} | {9:22s}",
-                   "i", "c", "s",
-                   "Dᵢ₊₁", "Dᵢ", "Eᵢ₊₁", "Eᵢ", "Eᵢ₋₁", "F")
-
-        fmt = FormatExpr("{1:>$(nd)d}  | {2:+0.3e}{3:+0.3e}im {4:+0.3e}{5:+0.3e}im | {6:+0.3e}{7:+0.3e}im {8:+0.3e}{9:+0.3e}im {10:+0.3e}{11:+0.3e}im {12:+0.3e}{13:+0.3e}im {14:+0.3e}{15:+0.3e}im | {16:+0.3e}{17:+0.3e}im")
-        fmt′ = FormatExpr("{1:>$(nd)d}′ | {2:+0.3e}{3:+0.3e}im {4:+0.3e}{5:+0.3e}im | {6:+0.3e}{7:+0.3e}im {8:+0.3e}{9:+0.3e}im {10:+0.3e}{11:+0.3e}im {12:+0.3e}{13:+0.3e}im {14:+0.3e}{15:+0.3e}im | {16:+0.3e}{17:+0.3e}im")
-    end
-
-    Dᵢ₊₁ = D[end]
-    Dᵢ = D[end-1]
-    Eᵢ = E[end]
-    Eᵢ₋₁ = n > 2 ? E[end-1] : zero(Eᵢ)
-    Eᵢ₊₁ = zero(Eᵢ)
-    F = zero(Eᵢ)
-
-    Dᵢ₊₁′ = zero(Dᵢ₊₁)
-    Dᵢ′ = zero(Dᵢ)
-    Eᵢ₋₁′ = zero(Eᵢ₋₁)
-    Eᵢ′ = zero(Eᵢ)
-    Eᵢ₊₁′ = zero(Eᵢ₊₁)
-    F′ = zero(F)
-
-    c′ = zero(c)
-    s′ = zero(s)
-
-    ϵ = eps(real(eltype(E)))
-    N = estimate_tridiag_norm(D, E)
-    tol = √ϵ*N
-
-    verbosity > 0 && @show ϵ N tol norm(SymTridiagonal(D, E))
-
-    for i = n-1:-1:1
-        if i < n-1
-            B = inv(√(Eᵢ₊₁^2 + F^2))
-            c = Eᵢ₊₁*B
-            s = F*B
-        end
-
-        c² = c*c
-        cs = c*s
-        s² = s*s
-
-        a = 2cs*Eᵢ
-
-        Dᵢ₊₁′ = D[i+1] = c²*Dᵢ₊₁ + a + s²*Dᵢ
-        Dᵢ′ = D[i] = c²*Dᵢ - a + s²*Dᵢ₊₁
-        if i < n-1
-            Eᵢ₊₁′ = E[i+1] = √(Eᵢ₊₁^2+F^2)
-            # @check_E D E i+1 tol ϵ verbosity
-        end
-        Eᵢ′ = E[i] = (c² - s²)*Eᵢ + cs*(Dᵢ - Dᵢ₊₁)
-        # @check_E D E i tol ϵ verbosity
-        if i > 1
-            Eᵢ₋₁′ = E[i-1] = c*Eᵢ₋₁
-            # @check_E D E i-1 tol ϵ verbosity
-            F′ = s*Eᵢ₋₁
-        end
-
-        if verbosity > 0
-            printfmtln(fmt, i,
-                       real(c), imag(c),
-                       real(s), imag(s),
-                       real(Dᵢ₊₁), imag(Dᵢ₊₁),
-                       real(Dᵢ), imag(Dᵢ),
-                       real(Eᵢ₊₁), imag(Eᵢ₊₁),
-                       real(Eᵢ), imag(Eᵢ),
-                       real(Eᵢ₋₁), imag(Eᵢ₋₁),
-                       real(F), imag(F))
-            printfmtln(fmt′, i,
-                       real(c′), imag(c′),
-                       real(s′), imag(s′),
-                       real(Dᵢ₊₁′), imag(Dᵢ₊₁′),
-                       real(Dᵢ′), imag(Dᵢ′),
-                       real(Eᵢ₊₁′), imag(Eᵢ₊₁′),
-                       real(Eᵢ′), imag(Eᵢ′),
-                       real(Eᵢ₋₁′), imag(Eᵢ₋₁′),
-                       real(F′), imag(F′))
-        end
-
-        if i > 1
-            Dᵢ₊₁ = Dᵢ′
-            Dᵢ = D[i-1]
-            Eᵢ₊₁ = Eᵢ′
-            Eᵢ = Eᵢ₋₁′
-            Eᵢ₋₁ = E[i-1]
-            F = F′
-            # c = c′
-            # s = s′
-        end
-    end
-    1
-end
-
-function noble2017_sweep!(D, E, shift_mode, verbosity)
-    σ = get_shift(D, E, shift_mode; verbosity=verbosity-2)
-
-    Dₙ = D[end]
-    Eₙ₋₁ = E[end-1]
-    iszero(Eₙ₋₁) && return length(E)
-    A = inv(√((Dₙ - σ)^2 + Eₙ₋₁^2))
-    c = (Dₙ - σ)*A
-    s = Eₙ₋₁*A
-    verbosity > 1 && @info "Initial rotation" Dₙ Eₙ₋₁ A c s c^2 + s^2
-
-    noble2017_sweep!(D, E, c, s, verbosity=verbosity-2)
-end
-
 function cancellation_imminent(w, ι=100eps(real(w)))
     a = real(w)
     b = imag(w)
@@ -216,7 +101,7 @@ Specifically, this covers steps 3–4, since the other steps are taken
 care of by the driver routine [`triql!`](@ref).
 
 """
-function cullum1996_sweep!(k, D, E, shift_mode, verbosity; max_sweep_tries=10)
+function cullum1996_sweep!(k, D, E, shift_mode, verbosity; Qright=nothing, max_sweep_tries=10)
     U = promote_type(eltype(D), eltype(E))
 
     M = length(D)
@@ -298,6 +183,27 @@ function cullum1996_sweep!(k, D, E, shift_mode, verbosity; max_sweep_tries=10)
             verbosity > 1 && @show D[i], D[i+1]
             G = B - c*rr
             verbosity > 1 && @show G
+
+            if !isnothing(Qright)
+                if verbosity > 1
+                    @info "Forming eigenvectors" i c s
+                    @show Qright[:,i]
+                    @show Qright[:,i+1]
+                end
+
+                qi = view(Qright, :, i)
+                qip1 = view(Qright, :, i+1)
+                for k = eachindex(qi)
+                    u = qi[k]
+                    v = qip1[k]
+                    qi[k] = -c*u + s*v
+                    qip1[k] = s*u + c*v
+                    if verbosity > 1
+                        @show k
+                        display(parent(Qright))
+                    end
+                end
+            end
         end
         D[1] -= ϕ
         E[1] = G
@@ -307,7 +213,7 @@ function cullum1996_sweep!(k, D, E, shift_mode, verbosity; max_sweep_tries=10)
     @warn "Successful sweep not accomplished in $(max_sweep_tries) tries"
 end
 
-function triql!(D, E; max_iter=150, ϵ=eps(real(eltype(E))), verbosity=0, shift_mode=2, kwargs...)
+function triql!(D, E; Qright=nothing, max_iter=150, ϵ=eps(real(eltype(E))), verbosity=0, shift_mode=2, kwargs...)
     N = length(D)
     @assert length(E) == N
     N < 2 && return
@@ -338,10 +244,12 @@ function triql!(D, E; max_iter=150, ϵ=eps(real(eltype(E))), verbosity=0, shift_
                 @info "Diagonalizing submatrix $(l)–$(m)"
             end
 
-            Ds = view(D, l:m)
-            Es = view(E, l:m)
+            sel = l:m
+            Ds = view(D, sel)
+            Es = view(E, sel)
+            Qrights = isnothing(Qright) ? nothing : view(Qright, :, sel)
 
-            cullum1996_sweep!(n, Ds, Es, shift_mode, verbosity-2; kwargs...)
+            cullum1996_sweep!(n, Ds, Es, shift_mode, verbosity-2; Qright=Qrights, kwargs...)
 
             if verbosity > 0
                 verbosity > 1 && display(SymTridiagonal(D, E))
@@ -358,8 +266,6 @@ function triql!(D, E; max_iter=150, ϵ=eps(real(eltype(E))), verbosity=0, shift_
         end
 
         converged || @warn "Convergence not reached in $(max_iter) iterations" tol
-        # @warn "Breaking"
-        # break
     end
 end
 
@@ -380,4 +286,11 @@ end
 
 triql(T; kwargs...) = triql!(copy(T); kwargs...)
 
-export triql!, triql
+function triql_vectors(T; kwargs...)
+    U = eltype(T)
+    Qright = Matrix(one(U)*I, size(T))
+    T = triql!(copy(T); Qright=Qright, kwargs...)
+    Eigen(sorteig!(diag(T), Qright)...)
+end
+
+export triql!, triql, triql_vectors
