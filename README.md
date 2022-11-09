@@ -14,5 +14,5 @@ factorization, as outlined in
   83–109. http://dx.doi.org/10.1137/s0895479894137639
   
 - Bowdler, H., Martin, R., Reinsch, C., & Wilkinson,
-  J. (1968). Handbook series linear algebra. the QR and QL algorithms
-  for symmetrie matrices. Numerische Mathematik, 11, 293–306.
+  J. (1968). Handbook series linear algebra. The $QR$ and $QL$ algorithms
+  for symmetric matrices. Numerische Mathematik, 11, 293–306.
